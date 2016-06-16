@@ -1,5 +1,9 @@
 *~
 .stamp.*
 /binutils-*
+/gcc-*
+/newlib-*
 /out
-/sources/binutils-*.tar.bz2
+/sources/binutils-*
+/sources/gcc-*
+/sources/newlib-*
