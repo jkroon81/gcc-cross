@@ -9,11 +9,7 @@ newlib_version := 2.4.0
 newlib_suffix := .tar.gz
 newlib_location := ftp://sourceware.org/pub/newlib/
 
-all : build-packages
-
-.PHONY : build-packages
-
-build-packages : .stamp.build-binutils .stamp.build-gcc
+all : .stamp.build-gcc-full
 
 define add_package
 $1-$($1_version) : sources/$1-$$($1_version)$$($1_suffix)
@@ -38,8 +34,7 @@ $(foreach p,$(packages),$(eval $(call add_package,$p)))
 	make install
 	touch $@
 
-.stamp.build-gcc : gcc-$(gcc_version) newlib-$(newlib_version)
-	cd gcc-$(gcc_version) && ln -sf ../newlib-$(newlib_version) newlib
+.stamp.build-gcc : gcc-$(gcc_version) .stamp.build-binutils
 	rm -rf gcc-build
 	mkdir gcc-build
 	cd gcc-build && \
@@ -50,4 +45,29 @@ $(foreach p,$(packages),$(eval $(call add_package,$p)))
 		--with-newlib && \
 	make all-gcc && \
 	make install-gcc
+	touch $@
+
+.stamp.build-newlib : newlib-$(newlib_version) .stamp.build-gcc
+	rm -rf newlib-build
+	mkdir newlib-build
+	export PATH=$(PATH):$(CURDIR)/out/bin && \
+	cd newlib-build && \
+	../newlib-$(newlib_version)/configure \
+		--target=h8300-elf \
+		--prefix=$(CURDIR)/out && \
+	make && \
+	make install
+	touch $@
+
+.stamp.build-gcc-full : gcc-$(gcc_version) .stamp.build-newlib
+	rm -rf gcc-full-build
+	mkdir gcc-full-build
+	cd gcc-full-build && \
+	../gcc-$(gcc_version)/configure \
+		--target=h8300-elf \
+		--prefix=$(CURDIR)/out \
+		--enable-languages=c \
+		--with-newlib && \
+	make && \
+	make install
 	touch $@
