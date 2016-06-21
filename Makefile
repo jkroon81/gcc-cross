@@ -65,12 +65,16 @@ ifeq ($2,linux)
 	make all-gcc && \
 	make install-gcc
 	touch $$@
+
+.stamp.newlib-$1-$2 : .stamp.gcc-bootstrap-$1
+else
+.stamp.newlib-$1-$2 : .stamp.gcc-$1-linux
 endif
 
-.stamp.newlib-$1-$2 : newlib-$(newlib_version) .stamp.gcc-bootstrap-$1
+.stamp.newlib-$1-$2 : newlib-$(newlib_version)
 	rm -rf newlib-build-$1-$2
 	mkdir newlib-build-$1-$2
-	export PATH=$$(PATH):$$(CURDIR)/$1-toolchain-linux/bin && \
+	export PATH=$$(CURDIR)/$1-toolchain-linux/bin:$$(PATH) && \
 	cd newlib-build-$1-$2 && \
 	../newlib-$$(newlib_version)/configure \
 		$$(call configure_flags,$2) \
@@ -82,7 +86,7 @@ endif
 .stamp.gcc-$1-$2 : gcc-$$(gcc_version) .stamp.newlib-$1-$2
 	rm -rf gcc-build-$1-$2
 	mkdir gcc-build-$1-$2
-	export PATH=$$(PATH):$$(CURDIR)/$2-toolchain-linux/bin && \
+	export PATH=$$(CURDIR)/$1-toolchain-linux/bin:$$(PATH) && \
 	cd gcc-build-$1-$2 && \
 	../gcc-$$(gcc_version)/configure \
 		$$(call configure_flags,$2) \
@@ -92,8 +96,6 @@ endif
 	make install-strip
 	touch $$@
 endef
-
-.stamp.newlib-$(TARGET)-mingw64 : .stamp.gcc-$(TARGET)-linux
 
 $(foreach h,$(hosts),$(eval $(call add_host,$(TARGET),$h)))
 
