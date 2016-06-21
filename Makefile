@@ -54,10 +54,10 @@ define add_host
 	touch $$@
 
 ifeq ($2,linux)
-.stamp.gcc-bootstrap-$1-$2 : gcc-$$(gcc_version) .stamp.binutils-$1-$2
-	rm -rf gcc-bootstrap-build-$1-$2
-	mkdir gcc-bootstrap-build-$1-$2
-	cd gcc-bootstrap-build-$1-$2 && \
+.stamp.gcc-bootstrap-$1 : gcc-$$(gcc_version) .stamp.binutils-$1-$2
+	rm -rf gcc-bootstrap-build-$1
+	mkdir gcc-bootstrap-build-$1
+	cd gcc-bootstrap-build-$1 && \
 	../gcc-$$(gcc_version)/configure \
 		$$(call configure_flags,$2) \
 		--enable-languages=c \
@@ -67,7 +67,7 @@ ifeq ($2,linux)
 	touch $$@
 endif
 
-.stamp.newlib-$1-$2 : newlib-$(newlib_version) .stamp.gcc-bootstrap-$1-linux
+.stamp.newlib-$1-$2 : newlib-$(newlib_version) .stamp.gcc-bootstrap-$1
 	rm -rf newlib-build-$1-$2
 	mkdir newlib-build-$1-$2
 	export PATH=$$(PATH):$$(CURDIR)/$1-toolchain-linux/bin && \
