@@ -9,25 +9,24 @@ newlib_version := 2.4.0
 newlib_suffix := .tar.gz
 newlib_location := ftp://sourceware.org/pub/newlib/
 hosts := linux mingw64
-target := h8300-elf
 
+TARGET ?= h8300-elf
 HOST ?= mingw64
 
-configure_flags_mingw64 := \
---build=x86_64-pc-linux-gnu \
---host=x86_64-w64-mingw32
+configure_flags_mingw64 := --build=x86_64-pc-linux-gnu --host=x86_64-w64-mingw32
+
 define configure_flags
 $(configure_flags_$1) \
---target=$(target) \
+--target=$(TARGET) \
 --disable-nls \
---prefix=$(CURDIR)/$(target)-toolchain-$1
+--prefix=$(CURDIR)/$(TARGET)-toolchain-$1
 endef
 
 gcc_unpack_hook := \
 	cd gcc-$(gcc_version) && \
 	./contrib/download_prerequisites
 
-all : .stamp.binutils-$(HOST) .stamp.gcc-$(HOST)
+all : .stamp.binutils-$(TARGET)-$(HOST) .stamp.gcc-$(TARGET)-$(HOST)
 
 define add_package
 $1-$($1_version) : sources/$1-$$($1_version)$$($1_suffix)
@@ -44,23 +43,23 @@ endef
 $(foreach p,$(packages),$(eval $(call add_package,$p)))
 
 define add_host
-.stamp.binutils-$1 : binutils-$$(binutils_version)
-	rm -rf binutils-build-$1
-	mkdir binutils-build-$1
-	cd binutils-build-$1 && \
+.stamp.binutils-$1-$2 : binutils-$$(binutils_version)
+	rm -rf binutils-build-$1-$2
+	mkdir binutils-build-$1-$2
+	cd binutils-build-$1-$2 && \
 	../binutils-$$(binutils_version)/configure \
-		$$(call configure_flags,$1) && \
+		$$(call configure_flags,$2) && \
 	make && \
 	make install-strip
 	touch $$@
 
-ifeq ($1,linux)
-.stamp.gcc-bootstrap-$1 : gcc-$$(gcc_version) .stamp.binutils-$1
-	rm -rf gcc-bootstrap-build-$1
-	mkdir gcc-bootstrap-build-$1
-	cd gcc-bootstrap-build-$1 && \
+ifeq ($2,linux)
+.stamp.gcc-bootstrap-$1-$2 : gcc-$$(gcc_version) .stamp.binutils-$1-$2
+	rm -rf gcc-bootstrap-build-$1-$2
+	mkdir gcc-bootstrap-build-$1-$2
+	cd gcc-bootstrap-build-$1-$2 && \
 	../gcc-$$(gcc_version)/configure \
-		$$(call configure_flags,$1) \
+		$$(call configure_flags,$2) \
 		--enable-languages=c \
 		--with-newlib && \
 	make all-gcc && \
@@ -68,25 +67,25 @@ ifeq ($1,linux)
 	touch $$@
 endif
 
-.stamp.newlib-$1 : newlib-$(newlib_version) .stamp.gcc-bootstrap-linux
-	rm -rf newlib-build-$1
-	mkdir newlib-build-$1
-	export PATH=$$(PATH):$$(CURDIR)/$(target)-toolchain-linux/bin && \
-	cd newlib-build-$1 && \
+.stamp.newlib-$1-$2 : newlib-$(newlib_version) .stamp.gcc-bootstrap-$1-linux
+	rm -rf newlib-build-$1-$2
+	mkdir newlib-build-$1-$2
+	export PATH=$$(PATH):$$(CURDIR)/$1-toolchain-linux/bin && \
+	cd newlib-build-$1-$2 && \
 	../newlib-$$(newlib_version)/configure \
-		$$(call configure_flags,$1) \
+		$$(call configure_flags,$2) \
 		--disable-newlib-supplied-syscalls && \
 	make && \
 	make install
 	touch $$@
 
-.stamp.gcc-$1 : gcc-$$(gcc_version) .stamp.newlib-$1
-	rm -rf gcc-build-$1
-	mkdir gcc-build-$1
-	export PATH=$$(PATH):$$(CURDIR)/$(target)-toolchain-linux/bin && \
-	cd gcc-build-$1 && \
+.stamp.gcc-$1-$2 : gcc-$$(gcc_version) .stamp.newlib-$1-$2
+	rm -rf gcc-build-$1-$2
+	mkdir gcc-build-$1-$2
+	export PATH=$$(PATH):$$(CURDIR)/$2-toolchain-linux/bin && \
+	cd gcc-build-$1-$2 && \
 	../gcc-$$(gcc_version)/configure \
-		$$(call configure_flags,$1) \
+		$$(call configure_flags,$2) \
 		--enable-languages=c \
 		--with-newlib && \
 	make && \
@@ -94,9 +93,9 @@ endif
 	touch $$@
 endef
 
-.stamp.newlib-mingw64 : .stamp.gcc-linux
+.stamp.newlib-$(TARGET)-mingw64 : .stamp.gcc-$(TARGET)-linux
 
-$(foreach h,$(hosts),$(eval $(call add_host,$h)))
+$(foreach h,$(hosts),$(eval $(call add_host,$(TARGET),$h)))
 
 clean :
 	rm -f .stamp.*
