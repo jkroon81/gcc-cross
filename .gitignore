@@ -3,7 +3,7 @@
 /binutils-*
 /gcc-*
 /newlib-*
-/out
+/out-*
 /sources/binutils-*
 /sources/gcc-*
 /sources/newlib-*
