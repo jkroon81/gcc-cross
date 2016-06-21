@@ -1,9 +1,9 @@
 *~
-.stamp.*
+/.stamp.*
 /binutils-*
 /gcc-*
 /newlib-*
-/out-*
+/*-toolchain-*
 /sources/binutils-*
 /sources/gcc-*
 /sources/newlib-*

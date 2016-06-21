@@ -8,25 +8,26 @@ gcc_location := ftp://ftp.fu-berlin.de/unix/languages/gcc/releases/gcc-6.1.0/
 newlib_version := 2.4.0
 newlib_suffix := .tar.gz
 newlib_location := ftp://sourceware.org/pub/newlib/
-archs := linux mingw64
+hosts := linux mingw64
+target := h8300-elf
 
-HOST ?= linux
+HOST ?= mingw64
 
 configure_flags_mingw64 := \
 --build=x86_64-pc-linux-gnu \
 --host=x86_64-w64-mingw32
 define configure_flags
 $(configure_flags_$1) \
---target=h8300-elf \
+--target=$(target) \
 --disable-nls \
---prefix=$(CURDIR)/out-$1
+--prefix=$(CURDIR)/$(target)-toolchain-$1
 endef
 
 gcc_unpack_hook := \
 	cd gcc-$(gcc_version) && \
 	./contrib/download_prerequisites
 
-all : .stamp.gcc-full-$(HOST)
+all : .stamp.binutils-$(HOST) .stamp.gcc-$(HOST)
 
 define add_package
 $1-$($1_version) : sources/$1-$$($1_version)$$($1_suffix)
@@ -42,7 +43,7 @@ endef
 
 $(foreach p,$(packages),$(eval $(call add_package,$p)))
 
-define add_arch
+define add_host
 .stamp.binutils-$1 : binutils-$$(binutils_version)
 	rm -rf binutils-build-$1
 	mkdir binutils-build-$1
@@ -54,10 +55,10 @@ define add_arch
 	touch $$@
 
 ifeq ($1,linux)
-.stamp.gcc-$1 : gcc-$$(gcc_version) .stamp.binutils-$1
-	rm -rf gcc-build-$1
-	mkdir gcc-build-$1
-	cd gcc-build-$1 && \
+.stamp.gcc-bootstrap-$1 : gcc-$$(gcc_version) .stamp.binutils-$1
+	rm -rf gcc-bootstrap-build-$1
+	mkdir gcc-bootstrap-build-$1
+	cd gcc-bootstrap-build-$1 && \
 	../gcc-$$(gcc_version)/configure \
 		$$(call configure_flags,$1) \
 		--enable-languages=c \
@@ -67,10 +68,10 @@ ifeq ($1,linux)
 	touch $$@
 endif
 
-.stamp.newlib-$1 : newlib-$(newlib_version) .stamp.gcc-linux
+.stamp.newlib-$1 : newlib-$(newlib_version) .stamp.gcc-bootstrap-linux
 	rm -rf newlib-build-$1
 	mkdir newlib-build-$1
-	export PATH=$$(PATH):$$(CURDIR)/out-linux/bin && \
+	export PATH=$$(PATH):$$(CURDIR)/$(target)-toolchain-linux/bin && \
 	cd newlib-build-$1 && \
 	../newlib-$$(newlib_version)/configure \
 		$$(call configure_flags,$1) \
@@ -79,11 +80,11 @@ endif
 	make install
 	touch $$@
 
-.stamp.gcc-full-$1 : gcc-$$(gcc_version) .stamp.newlib-$1 .stamp.gcc-linux
-	rm -rf gcc-full-build-$1
-	mkdir gcc-full-build-$1
-	export PATH=$$(PATH):$$(CURDIR)/out-linux/bin && \
-	cd gcc-full-build-$1 && \
+.stamp.gcc-$1 : gcc-$$(gcc_version) .stamp.newlib-$1
+	rm -rf gcc-build-$1
+	mkdir gcc-build-$1
+	export PATH=$$(PATH):$$(CURDIR)/$(target)-toolchain-linux/bin && \
+	cd gcc-build-$1 && \
 	../gcc-$$(gcc_version)/configure \
 		$$(call configure_flags,$1) \
 		--enable-languages=c \
@@ -93,9 +94,11 @@ endif
 	touch $$@
 endef
 
-$(foreach a,$(archs),$(eval $(call add_arch,$a)))
+.stamp.newlib-mingw64 : .stamp.gcc-linux
+
+$(foreach h,$(hosts),$(eval $(call add_host,$h)))
 
 clean :
 	rm -f .stamp.*
-	rm -rf binutils-build-* gcc-build-* newlib-build-*
-	rm -rf out-*
+	rm -rf binutils-build-* gcc*-build-* newlib-build-*
+	rm -rf *-toolchain-*
