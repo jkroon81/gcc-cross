@@ -22,9 +22,7 @@ $(configure_flags_$1) \
 --prefix=$(CURDIR)/$(TARGET)-toolchain-$1
 endef
 
-gcc_unpack_hook := \
-	cd gcc-$(gcc_version) && \
-	./contrib/download_prerequisites
+gcc_unpack_hook := cd gcc-$(gcc_version) && ./contrib/download_prerequisites
 
 all : .stamp.binutils-$(TARGET)-$(HOST) .stamp.gcc-$(TARGET)-$(HOST)
 
@@ -42,11 +40,13 @@ endef
 
 $(foreach p,$(packages),$(eval $(call add_package,$p)))
 
+define prep_build
+rm -rf $1 && mkdir $1 && cd $1
+endef
+
 define add_host
 .stamp.binutils-$1-$2 : binutils-$$(binutils_version)
-	rm -rf binutils-build-$1-$2
-	mkdir binutils-build-$1-$2
-	cd binutils-build-$1-$2 && \
+	$$(call prep_build,binutils-build-$1-$2) && \
 	../binutils-$$(binutils_version)/configure \
 		$$(call configure_flags,$2) && \
 	make && \
@@ -55,9 +55,7 @@ define add_host
 
 ifeq ($2,linux)
 .stamp.gcc-bootstrap-$1 : gcc-$$(gcc_version) .stamp.binutils-$1-$2
-	rm -rf gcc-bootstrap-build-$1
-	mkdir gcc-bootstrap-build-$1
-	cd gcc-bootstrap-build-$1 && \
+	$$(call prep_build,gcc-bootstrap-build-$1) && \
 	../gcc-$$(gcc_version)/configure \
 		$$(call configure_flags,$2) \
 		--enable-languages=c \
@@ -72,22 +70,18 @@ else
 endif
 
 .stamp.newlib-$1-$2 : newlib-$(newlib_version)
-	rm -rf newlib-build-$1-$2
-	mkdir newlib-build-$1-$2
+	$$(call prep_build,newlib-build-$1-$2) && \
 	export PATH=$$(CURDIR)/$1-toolchain-linux/bin:$$(PATH) && \
-	cd newlib-build-$1-$2 && \
 	../newlib-$$(newlib_version)/configure \
 		$$(call configure_flags,$2) \
 		--disable-newlib-supplied-syscalls && \
 	make && \
-	make install
+	make install-strip
 	touch $$@
 
 .stamp.gcc-$1-$2 : gcc-$$(gcc_version) .stamp.newlib-$1-$2
-	rm -rf gcc-build-$1-$2
-	mkdir gcc-build-$1-$2
+	$$(call prep_build,gcc-build-$1-$2) && \
 	export PATH=$$(CURDIR)/$1-toolchain-linux/bin:$$(PATH) && \
-	cd gcc-build-$1-$2 && \
 	../gcc-$$(gcc_version)/configure \
 		$$(call configure_flags,$2) \
 		--enable-languages=c \
