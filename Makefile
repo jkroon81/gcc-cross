@@ -9,6 +9,7 @@ newlib_version := 2.4.0
 newlib_suffix := .tar.gz
 newlib_location := ftp://sourceware.org/pub/newlib/
 hosts := linux mingw64
+njobs := $(shell echo "2 * `cat /proc/cpuinfo | grep processor | wc -l`" | bc)
 
 TARGET ?= h8300-elf
 HOST ?= mingw64
@@ -49,7 +50,7 @@ define add_host
 	$$(call prep_build,binutils-build-$1-$2) && \
 	../binutils-$$(binutils_version)/configure \
 		$$(call configure_flags,$2) && \
-	make && \
+	make -j $(njobs) && \
 	make install-strip
 	touch $$@
 
@@ -60,7 +61,7 @@ ifeq ($2,linux)
 		$$(call configure_flags,$2) \
 		--enable-languages=c \
 		--with-newlib && \
-	make all-gcc && \
+	make all-gcc -j $(njobs) && \
 	make install-gcc
 	touch $$@
 
@@ -75,7 +76,7 @@ endif
 	../newlib-$$(newlib_version)/configure \
 		$$(call configure_flags,$2) \
 		--disable-newlib-supplied-syscalls && \
-	make && \
+	make -j $(njobs) && \
 	make install-strip
 	touch $$@
 
@@ -86,7 +87,7 @@ endif
 		$$(call configure_flags,$2) \
 		--enable-languages=c \
 		--with-newlib && \
-	make && \
+	make -j $(njobs) && \
 	make install-strip
 	touch $$@
 endef
