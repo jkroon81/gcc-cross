@@ -30,7 +30,7 @@ configure_flags_gcc := \
 
 gcc_unpack_hook := cd gcc-$(gcc_version) && ./contrib/download_prerequisites
 
-all : .stamp.binutils-$(TARGET)-$(HOST) .stamp.gcc-$(TARGET)-$(HOST)
+all : $(TARGET)-toolchain-$(HOST).tar.gz
 
 define add_package
 $1-$($1_version) : sources/$1-$$($1_version)$$($1_suffix)
@@ -52,7 +52,7 @@ endef
 
 define add_host
 .stamp.binutils-$1-$2 : binutils-$$(binutils_version)
-	$$(call prep_build,binutils-build-$1-$2) && \
+	$$(call prep_build,binutils-$1-$2) && \
 	../binutils-$$(binutils_version)/configure \
 		$$(call configure_flags,$2) && \
 	make -j $(njobs) && \
@@ -61,7 +61,7 @@ define add_host
 
 ifeq ($2,linux)
 .stamp.gcc-bootstrap-$1 : gcc-$$(gcc_version) .stamp.binutils-$1-$2
-	$$(call prep_build,gcc-bootstrap-build-$1) && \
+	$$(call prep_build,gcc-bootstrap-$1) && \
 	../gcc-$$(gcc_version)/configure \
 		$$(call configure_flags,$2) \
 		$$(configure_flags_gcc) && \
@@ -75,7 +75,7 @@ else
 endif
 
 .stamp.newlib-$1-$2 : newlib-$(newlib_version)
-	$$(call prep_build,newlib-build-$1-$2) && \
+	$$(call prep_build,newlib-$1-$2) && \
 	export PATH=$$(CURDIR)/$1-toolchain-linux/bin:$$(PATH) && \
 	../newlib-$$(newlib_version)/configure \
 		$$(call configure_flags,$2) \
@@ -85,7 +85,7 @@ endif
 	touch $$@
 
 .stamp.gcc-$1-$2 : gcc-$$(gcc_version) .stamp.newlib-$1-$2
-	$$(call prep_build,gcc-build-$1-$2) && \
+	$$(call prep_build,gcc-$1-$2) && \
 	export PATH=$$(CURDIR)/$1-toolchain-linux/bin:$$(PATH) && \
 	../gcc-$$(gcc_version)/configure \
 		$$(call configure_flags,$2) \
@@ -97,7 +97,11 @@ endef
 
 $(foreach h,$(hosts),$(eval $(call add_host,$(TARGET),$h)))
 
+$(TARGET)-toolchain-$(HOST).tar.gz : .stamp.binutils-$(TARGET)-$(HOST) \
+                                     .stamp.gcc-$(TARGET)-$(HOST)
+	tar -czf $@ $(TARGET)-toolchain-$(HOST)
+
 clean :
 	rm -f .stamp.*
-	rm -rf binutils-build-* gcc*-build-* newlib-build-*
+	rm -rf binutils-* gcc-* newlib-*
 	rm -rf *-toolchain-*
