@@ -23,6 +23,11 @@ $(configure_flags_$1) \
 --prefix=$(CURDIR)/$(TARGET)-toolchain-$1
 endef
 
+configure_flags_gcc := \
+	--enable-languages=c \
+	--with-newlib \
+	--disable-libssp
+
 gcc_unpack_hook := cd gcc-$(gcc_version) && ./contrib/download_prerequisites
 
 all : .stamp.binutils-$(TARGET)-$(HOST) .stamp.gcc-$(TARGET)-$(HOST)
@@ -59,8 +64,7 @@ ifeq ($2,linux)
 	$$(call prep_build,gcc-bootstrap-build-$1) && \
 	../gcc-$$(gcc_version)/configure \
 		$$(call configure_flags,$2) \
-		--enable-languages=c \
-		--with-newlib && \
+		$$(configure_flags_gcc) && \
 	make all-gcc -j $(njobs) && \
 	make install-gcc
 	touch $$@
@@ -85,8 +89,7 @@ endif
 	export PATH=$$(CURDIR)/$1-toolchain-linux/bin:$$(PATH) && \
 	../gcc-$$(gcc_version)/configure \
 		$$(call configure_flags,$2) \
-		--enable-languages=c \
-		--with-newlib && \
+		$$(configure_flags_gcc) && \
 	make -j $(njobs) && \
 	make install-strip
 	touch $$@
