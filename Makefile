@@ -36,10 +36,11 @@ gcc_unpack_hook := cd gcc-$(gcc_version) && ./contrib/download_prerequisites
 all : $(TARGET)-toolchain-$(HOST).tar.gz
 
 define add_package
-$1-$($1_version) : sources/$1-$$($1_version)$$($1_suffix)
-	rm -rf $$@
-	tar -xmf $$<
+.stamp.$1-unpack : sources/$1-$$($1_version)$$($1_suffix)
+	rm -rf $1-$$($1_version)
+	tar -xf $$<
 	$$($1_unpack_hook)
+	touch $$@
 
 sources/$1-$$($1_version)$$($1_suffix) :
 	mkdir -p sources && \
@@ -54,7 +55,7 @@ rm -rf $1 && mkdir $1 && cd $1
 endef
 
 define add_host
-.stamp.binutils-$1-$2 : binutils-$$(binutils_version)
+.stamp.binutils-$1-$2 : .stamp.binutils-unpack
 	$$(call prep_build,binutils-$1-$2) && \
 	../binutils-$$(binutils_version)/configure \
 		$$(call configure_flags,$2) && \
@@ -63,7 +64,7 @@ define add_host
 	touch $$@
 
 ifeq ($2,linux)
-.stamp.gcc-bootstrap-$1 : gcc-$$(gcc_version) .stamp.binutils-$1-$2
+.stamp.gcc-bootstrap-$1 : .stamp.gcc-unpack .stamp.binutils-$1-$2
 	$$(call prep_build,gcc-bootstrap-$1) && \
 	../gcc-$$(gcc_version)/configure \
 		$$(call configure_flags,$2) \
@@ -77,7 +78,7 @@ else
 .stamp.newlib-$1-$2 : .stamp.gcc-$1-linux
 endif
 
-.stamp.newlib-$1-$2 : newlib-$(newlib_version)
+.stamp.newlib-$1-$2 : .stamp.newlib-unpack
 	$$(call prep_build,newlib-$1-$2) && \
 	export PATH=$$(CURDIR)/$1-toolchain-linux/bin:$$(PATH) && \
 	../newlib-$$(newlib_version)/configure \
@@ -87,7 +88,7 @@ endif
 	make install-strip
 	touch $$@
 
-.stamp.gcc-$1-$2 : gcc-$$(gcc_version) .stamp.newlib-$1-$2
+.stamp.gcc-$1-$2 : .stamp.gcc-unpack .stamp.newlib-$1-$2
 	$$(call prep_build,gcc-$1-$2) && \
 	export PATH=$$(CURDIR)/$1-toolchain-linux/bin:$$(PATH) && \
 	../gcc-$$(gcc_version)/configure \
