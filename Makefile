@@ -18,15 +18,18 @@ configure_flags_mingw64 := --build=x86_64-pc-linux-gnu --host=x86_64-w64-mingw32
 
 define configure_flags
 $(configure_flags_$1) \
---target=$(TARGET) \
+--disable-dependency-tracking \
 --disable-nls \
---prefix=$(CURDIR)/$(TARGET)-toolchain-$1
+--prefix=$(CURDIR)/$(TARGET)-toolchain-$1 \
+--target=$(TARGET)
 endef
 
 configure_flags_gcc := \
+	--disable-decimal-float \
+	--disable-libquadmath \
+	--disable-libssp \
 	--enable-languages=c \
-	--with-newlib \
-	--disable-libssp
+	--with-newlib
 
 gcc_unpack_hook := cd gcc-$(gcc_version) && ./contrib/download_prerequisites
 
