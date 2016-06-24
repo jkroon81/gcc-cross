@@ -3,7 +3,10 @@
 /binutils-*
 /gcc-*
 /newlib-*
-/*-toolchain-*
+/mingw-w64-*
 /sources/binutils-*
 /sources/gcc-*
 /sources/newlib-*
+/sources/mingw-w64-*
+/linux
+/mingw-w64
