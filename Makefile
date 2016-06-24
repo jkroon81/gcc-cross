@@ -21,7 +21,11 @@ $(configure_flags_$1) \
 --disable-dependency-tracking \
 --disable-nls \
 --prefix=$(CURDIR)/$(TARGET)-toolchain-$1 \
---target=$(TARGET)
+--target=$(TARGET) \
+CFLAGS='-O2' \
+CFLAGS_FOR_TARGET='-Os -fomit-frame-pointer' \
+CXXFLAGS='-O2' \
+CXXFLAGS_FOR_TARGET='-Os -fomit-frame-pointer'
 endef
 
 configure_flags_gcc := \
