@@ -19,24 +19,16 @@ BUILD ?= x86_64-pc-linux-gnu
 HOST ?= x86_64-w64-mingw32
 TARGET ?= h8300-elf
 
-define cf_binutils_x86_64-w64-mingw32-$(BUILD)
+define cf_binutils_x86_64-w64-mingw32
 --with-sysroot=$(CURDIR)/sysroots/$2/$1/sys-root
 endef
 
-define cf_binutils_$(TARGET)-x86_64-w64-mingw32
---build=$(BUILD) \
---host=$2
-endef
-
 define cf_binutils
-$(call cf_binutils_$1-$2,$1,$2) \
---prefix=$(CURDIR)/sysroots/$2 \
---target=$1
-endef
-
-define cf_gcc_$(TARGET)-x86_64-w64-mingw32
 --build=$(BUILD) \
---host=$2
+--host=$2 \
+--target=$1 \
+--prefix=$(CURDIR)/sysroots/$2 \
+$(call cf_binutils_$1,$1,$2)
 endef
 
 define cf_gcc_$(TARGET)
@@ -50,25 +42,22 @@ define cf_gcc_x86_64-w64-mingw32
 endef
 
 define cf_gcc
-$(call cf_gcc_$1-$2,$1,$2) \
-$(call cf_gcc_$1,$1,$2) \
+--build=$(BUILD) \
+--host=$2 \
+--target=$1 \
+--prefix=$(CURDIR)/sysroots/$2 \
 --disable-decimal-float \
 --disable-libquadmath \
 --disable-libssp \
---prefix=$(CURDIR)/sysroots/$2 \
---target=$1
-endef
-
-define cf_newlib_$(TARGET)-x86_64-w64-mingw32
---build=$(BUILD) \
---host=$2
+$(call cf_gcc_$1,$1,$2)
 endef
 
 define cf_newlib
-$(call cf_newlib_$1-$2,$1,$2) \
+--build=$(BUILD) \
+--host=$2 \
+--target=$1 \
 --prefix=$(CURDIR)/sysroots/$2 \
---disable-newlib-supplied-syscalls \
---target=$1
+--disable-newlib-supplied-syscalls
 endef
 
 define cf_mingw
