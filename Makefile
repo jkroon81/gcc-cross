@@ -39,10 +39,12 @@ define cf_gcc_$(TARGET)-mingw-w64
 endef
 
 define cf_gcc_$(TARGET)
+--enable-languages=c \
 --with-newlib
 endef
 
 define cf_gcc_x86_64-w64-mingw32
+--enable-languages=c,c++ \
 --with-sysroot=$(CURDIR)/$2/$1/sys-root
 endef
 
@@ -52,7 +54,6 @@ $(call cf_gcc_$1,$1,$2) \
 --disable-decimal-float \
 --disable-libquadmath \
 --disable-libssp \
---enable-languages=c \
 --prefix=$(CURDIR)/$2 \
 --target=$1
 endef
