@@ -18,37 +18,37 @@ njobs := $(shell echo "2 * `cat /proc/cpuinfo | grep processor | wc -l`" | bc)
 TARGET ?= h8300-elf
 HOST ?= mingw-w64
 
-define configure_flags_binutils_x86_64-w64-mingw32-linux
+define cf_binutils_x86_64-w64-mingw32-linux
 --with-sysroot=$(CURDIR)/$2/$1/sys-root
 endef
 
-define configure_flags_binutils_$(TARGET)-mingw-w64
+define cf_binutils_$(TARGET)-mingw-w64
 --build=x86_64-pc-linux-gnu \
 --host=x86_64-w64-mingw32
 endef
 
-define configure_flags_binutils
-$(call configure_flags_binutils_$1-$2,$1,$2) \
+define cf_binutils
+$(call cf_binutils_$1-$2,$1,$2) \
 --prefix=$(CURDIR)/$2 \
 --target=$1
 endef
 
-define configure_flags_gcc_$(TARGET)-mingw-w64
+define cf_gcc_$(TARGET)-mingw-w64
 --build=x86_64-pc-linux-gnu \
 --host=x86_64-w64-mingw32
 endef
 
-define configure_flags_gcc_$(TARGET)
+define cf_gcc_$(TARGET)
 --with-newlib
 endef
 
-define configure_flags_gcc_x86_64-w64-mingw32
+define cf_gcc_x86_64-w64-mingw32
 --with-sysroot=$(CURDIR)/$2/$1/sys-root
 endef
 
-define configure_flags_gcc
-$(call configure_flags_gcc_$1-$2,$1,$2) \
-$(call configure_flags_gcc_$1,$1,$2) \
+define cf_gcc
+$(call cf_gcc_$1-$2,$1,$2) \
+$(call cf_gcc_$1,$1,$2) \
 --disable-decimal-float \
 --disable-libquadmath \
 --disable-libssp \
@@ -57,19 +57,19 @@ $(call configure_flags_gcc_$1,$1,$2) \
 --target=$1
 endef
 
-define configure_flags_newlib_$(TARGET)-mingw-w64
+define cf_newlib_$(TARGET)-mingw-w64
 --build=x86_64-pc-linux-gnu \
 --host=x86_64-w64-mingw32
 endef
 
-define configure_flags_newlib
-$(call configure_flags_newlib_$1-$2,$1,$2) \
+define cf_newlib
+$(call cf_newlib_$1-$2,$1,$2) \
 --prefix=$(CURDIR)/$2 \
 --disable-newlib-supplied-syscalls \
 --target=$1
 endef
 
-define configure_flags_mingw
+define cf_mingw
 --build=x86_64-pc-linux-gnu \
 --host=x86_64-w64-mingw32 \
 --prefix=$(CURDIR)/$2/$1/sys-root/mingw
@@ -103,7 +103,7 @@ define add_toolchain
 	$$(call prep_build,binutils-$1-$2) && \
 	export PATH=$$(CURDIR)/linux/bin:$$(PATH) && \
 	../binutils-$$(binutils_version)/configure \
-		$$(call configure_flags_binutils,$1,$2) && \
+		$$(call cf_binutils,$1,$2) && \
 	make -j $(njobs) && \
 	make install-strip
 	touch $$@
@@ -116,7 +116,7 @@ ifeq ($2,linux)
 .stamp.gcc-bootstrap-$1 : .stamp.gcc-unpack .stamp.binutils-$1-$2
 	$$(call prep_build,gcc-$1-$2) && \
 	../gcc-$$(gcc_version)/configure \
-		$$(call configure_flags_gcc,$1,$2) && \
+		$$(call cf_gcc,$1,$2) && \
 	make all-gcc -j $(njobs) && \
 	make install-gcc
 	touch $$@
@@ -130,7 +130,7 @@ endif
 	$$(call prep_build,newlib-$1-$2) && \
 	export PATH=$$(CURDIR)/linux/bin:$$(PATH) && \
 	../newlib-$$(newlib_version)/configure \
-		$$(call configure_flags_newlib,$1,$2) && \
+		$$(call cf_newlib,$1,$2) && \
 	make -j $(njobs) && \
 	make install-strip
 	touch $$@
@@ -138,7 +138,7 @@ endif
 .stamp.mingw-w64-headers-$1-$2 : .stamp.mingw-w64-unpack
 	$$(call prep_build,mingw-w64-headers-$1-$2) && \
 	../mingw-w64-$(mingw-w64_version)/mingw-w64-headers/configure \
-		$$(call configure_flags_mingw,$1,$2) && \
+		$$(call cf_mingw,$1,$2) && \
 	make install
 	touch $$@
 
@@ -146,7 +146,7 @@ endif
 	$$(call prep_build,mingw-w64-$1-$2) && \
 	export PATH=$$(CURDIR)/linux/bin:$$(PATH) && \
 	../mingw-w64-$(mingw-w64_version)/configure \
-		$$(call configure_flags_mingw,$1,$2) && \
+		$$(call cf_mingw,$1,$2) && \
 	make -j $(njobs) && \
 	make install-strip
 	touch $$@
@@ -169,7 +169,7 @@ else
 	$$(call prep_build,gcc-$1-$2) && \
 	export PATH=$$(CURDIR)/linux/bin:$$(PATH) && \
 	../gcc-$$(gcc_version)/configure \
-		$$(call configure_flags_gcc,$1,$2) && \
+		$$(call cf_gcc,$1,$2) && \
 	make -j $(njobs) && \
 	make install-strip
 	touch $$@
