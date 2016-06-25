@@ -112,10 +112,8 @@ define add_toolchain
 	make install-strip
 	touch $$@
 
-ifneq ($(HOST),$(BUILD))
-ifeq ($2,$(HOST))
-.stamp.binutils-$1-$2 : .stamp.gcc-$(HOST)-$(BUILD)
-endif
+ifneq ($2-$(BUILD),$(BUILD)-$(BUILD))
+.stamp.binutils-$1-$2 : .stamp.gcc-$2-$(BUILD)
 endif
 
 ifeq ($2,$(BUILD))
@@ -127,9 +125,9 @@ ifeq ($2,$(BUILD))
 	make install-gcc
 	touch $$@
 
-.stamp.newlib-$1-$2 : .stamp.gcc-bootstrap-$1
-else
-.stamp.newlib-$1-$2 : .stamp.gcc-$1-$(BUILD)
+ifeq ($1,x86_64-w64-mingw32)
+.stamp.gcc-bootstrap-$1 : .stamp.mingw-w64-headers-$1-$2
+endif
 endif
 
 .stamp.newlib-$1-$2 : .stamp.newlib-unpack
@@ -140,6 +138,12 @@ endif
 	make install-strip
 	touch $$@
 
+ifeq ($2,$(BUILD))
+.stamp.newlib-$1-$2 : .stamp.gcc-bootstrap-$1
+else
+.stamp.newlib-$1-$2 : .stamp.gcc-$1-$(BUILD)
+endif
+
 .stamp.mingw-w64-headers-$1-$2 : .stamp.mingw-w64-unpack .stamp.binutils-$1-$2
 	$$(call prep_build,mingw-w64-headers-$1-$2) && \
 	../mingw-w64-$(mingw-w64_version)/mingw-w64-headers/configure \
@@ -147,7 +151,7 @@ endif
 	make install
 	touch $$@
 
-.stamp.mingw-w64-$1-$2 : .stamp.mingw-w64-headers-$1-$2 .stamp.gcc-bootstrap-$1
+.stamp.mingw-w64-$1-$2 : .stamp.gcc-bootstrap-$1
 	$$(call prep_build,mingw-w64-$1-$2) && \
 	../mingw-w64-$(mingw-w64_version)/configure \
 		$$(call cf_mingw,$1,$2) && \
@@ -155,14 +159,8 @@ endif
 	make install-strip
 	touch $$@
 
-ifeq ($1,x86_64-w64-mingw32)
-.stamp.gcc-$1-$2 : .stamp.mingw-w64-$1-$2
-else
-.stamp.gcc-$1-$2 : .stamp.newlib-$1-$2
-endif
-
 ifeq ($2,$(BUILD))
-.stamp.gcc-$1-$2 : .stamp.gcc-unpack
+.stamp.gcc-$1-$2 :
 	cd gcc-$1-$2 && \
 	export PATH=$(CURDIR)/sysroots/$(BUILD)/bin:$$$$PATH && \
 	make -j $(njobs) && \
@@ -178,12 +176,16 @@ else
 	touch $$@
 endif
 
+ifeq ($1,x86_64-w64-mingw32)
+.stamp.gcc-$1-$2 : .stamp.mingw-w64-$1-$2
+else
+.stamp.gcc-$1-$2 : .stamp.newlib-$1-$2
+endif
+
 endef
 
 $(foreach h,$(hosts),$(eval $(call add_toolchain,$(TARGET),$h)))
-ifneq ($(HOST),$(BUILD))
 $(eval $(call add_toolchain,$(HOST),$(BUILD)))
-endif
 
 $(TARGET)-toolchain-$(HOST).tar.gz : .stamp.binutils-$(TARGET)-$(HOST) \
                                      .stamp.gcc-$(TARGET)-$(HOST) \
