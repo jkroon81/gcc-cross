@@ -36,6 +36,8 @@ endef
 define cf_gcc_$(TARGET)
 --enable-languages=c \
 --with-newlib \
+--with-build-sysroot=$(CURDIR)/sysroots/$1 \
+--with-sysroot=$(CURDIR)/sysroots/$2/$1 \
 CFLAGS_FOR_TARGET='-Os -fomit-frame-pointer' \
 CXXFLAGS_FOR_TARGET='-Os -fomit-frame-pointer'
 endef
@@ -59,9 +61,9 @@ endef
 
 define cf_newlib
 --build=$(BUILD) \
---host=$2 \
+--host=$(BUILD) \
 --target=$1 \
---prefix=$(CURDIR)/sysroots/$2 \
+--prefix=/ \
 --disable-dependency-tracking \
 --disable-newlib-supplied-syscalls \
 --disable-nls \
@@ -104,6 +106,15 @@ cd $1-$2-$3 && \
 export PATH=$(CURDIR)/sysroots/$(BUILD)/bin:$$PATH
 endef
 
+.stamp.newlib-$(TARGET) : .stamp.newlib-unpack .stamp.gcc-bootstrap-$(TARGET)
+	$(call prep_build,newlib,$(TARGET),all) && \
+	( ../newlib-$(newlib_version)/configure \
+		$(call cf_newlib,$(TARGET),all) && \
+	make -j $(njobs) && \
+	make install-strip DESTDIR=$(CURDIR)/sysroots) \
+		&> $(CURDIR)/newlib-$(TARGET).log
+	@touch $@
+
 define add_toolchain
 .stamp.binutils-$1-$2 : .stamp.binutils-unpack
 	$$(call prep_build,binutils,$1,$2) && \
@@ -129,20 +140,6 @@ ifeq ($2,$(BUILD))
 ifeq ($1,x86_64-w64-mingw32)
 .stamp.gcc-bootstrap-$1 : .stamp.mingw-w64-headers-$1-$2
 endif
-endif
-
-.stamp.newlib-$1-$2 : .stamp.newlib-unpack
-	$$(call prep_build,newlib,$1,$2) && \
-	( ../newlib-$$(newlib_version)/configure \
-		$$(call cf_newlib,$1,$2) && \
-	make -j $(njobs) && \
-	make install-strip ) &> $(CURDIR)/newlib-$1-$2.log
-	@touch $$@
-
-ifeq ($2,$(BUILD))
-.stamp.newlib-$1-$2 : .stamp.gcc-bootstrap-$1
-else
-.stamp.newlib-$1-$2 : .stamp.gcc-$1-$(BUILD)
 endif
 
 .stamp.mingw-w64-headers-$1-$2 : .stamp.mingw-w64-unpack .stamp.binutils-$1-$2
@@ -181,7 +178,7 @@ endif
 ifeq ($1,x86_64-w64-mingw32)
 .stamp.gcc-$1-$2 : .stamp.mingw-w64-crt-$1-$2
 else
-.stamp.gcc-$1-$2 : .stamp.newlib-$1-$2
+.stamp.gcc-$1-$2 : .stamp.newlib-$1
 endif
 
 endef
@@ -191,16 +188,19 @@ $(eval $(call add_toolchain,$(HOST),$(BUILD)))
 
 $(TARGET)-toolchain-$(HOST).tar.gz : .stamp.binutils-$(TARGET)-$(HOST) \
                                      .stamp.gcc-$(TARGET)-$(HOST) \
-                                     .stamp.newlib-$(TARGET)-$(HOST)
+                                     .stamp.newlib-$(TARGET)
 	@echo "Creating $@"
 	@rm -f $@
 	@rm -rf $(TARGET)-toolchain-$(HOST)
 	@export PATH=$(CURDIR)/sysroots/$(BUILD)/bin:$$PATH && \
-	for pkg in binutils gcc newlib; do \
+	for pkg in binutils gcc; do \
 		make -C $$pkg-$(TARGET)-$(HOST) install-strip \
 			DESTDIR=$(CURDIR)/$(TARGET)-toolchain-$(HOST) \
 			&> $$pkg-install-$(TARGET)-$(HOST).log; \
-	done
+	done && \
+	make -C newlib-$(TARGET)-all install-strip \
+		DESTDIR=$(CURDIR)/$(TARGET)-toolchain-$(HOST)/$(CURDIR)/sysroots/$(HOST) \
+		>> newlib-install-$(TARGET)-$(HOST).log 2>&1
 	@cd $(TARGET)-toolchain-$(HOST)/$(CURDIR)/sysroots/$(HOST) && \
 	tar -czf $(CURDIR)/$@ *
 	@rm -rf $(TARGET)-toolchain-$(HOST)
