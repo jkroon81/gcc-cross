@@ -12,10 +12,10 @@ mingw-w64_version := v4.0.6
 mingw-w64_suffix := .tar.bz2
 mingw-w64_location := http://sourceforge.mirrorservice.org/m/mi/mingw-w64/mingw-w64/mingw-w64-release/
 
-hosts := x86_64-pc-linux-gnu x86_64-w64-mingw32
+hosts := x86_64-redhat-linux x86_64-w64-mingw32
 njobs := $(shell echo "2 * `cat /proc/cpuinfo | grep processor | wc -l`" | bc)
 
-BUILD ?= x86_64-pc-linux-gnu
+BUILD ?= x86_64-redhat-linux
 HOST ?= x86_64-w64-mingw32
 TARGET ?= h8300-elf
 
@@ -28,12 +28,16 @@ define cf_binutils
 --host=$2 \
 --target=$1 \
 --prefix=$(CURDIR)/sysroots/$2 \
+--disable-dependency-tracking \
+--disable-nls \
 $(call cf_binutils_$1,$1,$2)
 endef
 
 define cf_gcc_$(TARGET)
 --enable-languages=c \
---with-newlib
+--with-newlib \
+CFLAGS_FOR_TARGET='-Os -fomit-frame-pointer' \
+CXXFLAGS_FOR_TARGET='-Os -fomit-frame-pointer'
 endef
 
 define cf_gcc_x86_64-w64-mingw32
@@ -49,6 +53,7 @@ define cf_gcc
 --disable-decimal-float \
 --disable-libquadmath \
 --disable-libssp \
+--disable-nls \
 $(call cf_gcc_$1,$1,$2)
 endef
 
@@ -57,13 +62,19 @@ define cf_newlib
 --host=$2 \
 --target=$1 \
 --prefix=$(CURDIR)/sysroots/$2 \
---disable-newlib-supplied-syscalls
+--disable-dependency-tracking \
+--disable-newlib-supplied-syscalls \
+--disable-nls \
+CFLAGS_FOR_TARGET='-Os -fomit-frame-pointer' \
+CXXFLAGS_FOR_TARGET='-Os -fomit-frame-pointer'
 endef
 
 define cf_mingw
 --build=$(BUILD) \
 --host=$1 \
---prefix=$(CURDIR)/sysroots/$2/$1/sys-root/mingw
+--prefix=$(CURDIR)/sysroots/$2/$1/sys-root/mingw \
+--disable-dependency-tracking \
+--disable-nls
 endef
 
 gcc_unpack_hook := cd gcc-$(gcc_version) && ./contrib/download_prerequisites
@@ -86,13 +97,15 @@ endef
 $(foreach p,$(packages),$(eval $(call add_package,$p)))
 
 define prep_build
-rm -rf $1 && mkdir $1 && cd $1
+rm -rf $1 && \
+mkdir $1 && \
+cd $1 && \
+export PATH=$(CURDIR)/sysroots/$(BUILD)/bin:$$PATH
 endef
 
 define add_toolchain
 .stamp.binutils-$1-$2 : .stamp.binutils-unpack
 	$$(call prep_build,binutils-$1-$2) && \
-	export PATH=$$(CURDIR)/sysroots/$(BUILD)/bin:$$(PATH) && \
 	../binutils-$$(binutils_version)/configure \
 		$$(call cf_binutils,$1,$2) && \
 	make -j $(njobs) && \
@@ -119,14 +132,13 @@ endif
 
 .stamp.newlib-$1-$2 : .stamp.newlib-unpack
 	$$(call prep_build,newlib-$1-$2) && \
-	export PATH=$$(CURDIR)/sysroots/$(BUILD)/bin:$$(PATH) && \
 	../newlib-$$(newlib_version)/configure \
 		$$(call cf_newlib,$1,$2) && \
 	make -j $(njobs) && \
 	make install-strip
 	touch $$@
 
-.stamp.mingw-w64-headers-$1-$2 : .stamp.mingw-w64-unpack
+.stamp.mingw-w64-headers-$1-$2 : .stamp.mingw-w64-unpack .stamp.binutils-$1-$2
 	$$(call prep_build,mingw-w64-headers-$1-$2) && \
 	../mingw-w64-$(mingw-w64_version)/mingw-w64-headers/configure \
 		$$(call cf_mingw,$1,$2) && \
@@ -135,7 +147,6 @@ endif
 
 .stamp.mingw-w64-$1-$2 : .stamp.mingw-w64-headers-$1-$2 .stamp.gcc-bootstrap-$1
 	$$(call prep_build,mingw-w64-$1-$2) && \
-	export PATH=$$(CURDIR)/sysroots/$(BUILD)/bin:$$(PATH) && \
 	../mingw-w64-$(mingw-w64_version)/configure \
 		$$(call cf_mingw,$1,$2) && \
 	make -j $(njobs) && \
@@ -151,14 +162,13 @@ endif
 ifeq ($2,$(BUILD))
 .stamp.gcc-$1-$2 : .stamp.gcc-unpack
 	cd gcc-$1-$2 && \
-	export PATH=$$(CURDIR)/sysroots/$(BUILD)/bin:$$(PATH) && \
+	export PATH=$(CURDIR)/sysroots/$(BUILD)/bin:$$$$PATH && \
 	make -j $(njobs) && \
 	make install-strip
 	touch $$@
 else
 .stamp.gcc-$1-$2 : .stamp.gcc-unpack
 	$$(call prep_build,gcc-$1-$2) && \
-	export PATH=$$(CURDIR)/sysroots/$(BUILD)/bin:$$(PATH) && \
 	../gcc-$$(gcc_version)/configure \
 		$$(call cf_gcc,$1,$2) && \
 	make -j $(njobs) && \
