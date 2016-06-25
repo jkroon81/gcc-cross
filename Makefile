@@ -72,9 +72,7 @@ endef
 define cf_mingw
 --build=$(BUILD) \
 --host=$1 \
---prefix=$(CURDIR)/sysroots/$2/$1/sys-root/mingw \
---disable-dependency-tracking \
---disable-nls
+--prefix=$(CURDIR)/sysroots/$2/$1/sys-root/mingw
 endef
 
 gcc_unpack_hook := \
