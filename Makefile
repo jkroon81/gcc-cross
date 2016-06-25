@@ -183,7 +183,16 @@ $(eval $(call add_toolchain,$(HOST),$(BUILD)))
 
 $(TARGET)-toolchain.tar.gz : .stamp.binutils-$(TARGET)-$(HOST) \
                              .stamp.gcc-$(TARGET)-$(HOST)
-	cd sysroots && tar -czf ../$@ $(HOST)
+	rm -f $@
+	rm -rf $(TARGET)-toolchain
+	export PATH=$(CURDIR)/sysroots/$(BUILD)/bin:$$PATH && \
+	for pkg in binutils gcc newlib; do \
+		make -C $$pkg-$(TARGET)-$(HOST) install-strip \
+			DESTDIR=$(CURDIR)/$(TARGET)-toolchain; \
+	done
+	cd $(TARGET)-toolchain/$(CURDIR)/sysroots/$(HOST) && \
+	tar -czf $(CURDIR)/$@ *
+	rm -rf $(TARGET)-toolchain
 
 clean :
 	rm -f .stamp.*
