@@ -151,9 +151,9 @@ endif
 	make install
 	touch $$@
 
-.stamp.mingw-w64-$1-$2 : .stamp.gcc-bootstrap-$1
-	$$(call prep_build,mingw-w64-$1-$2) && \
-	../mingw-w64-$(mingw-w64_version)/configure \
+.stamp.mingw-w64-crt-$1-$2 : .stamp.gcc-bootstrap-$1
+	$$(call prep_build,mingw-w64-crt-$1-$2) && \
+	../mingw-w64-$(mingw-w64_version)/mingw-w64-crt/configure \
 		$$(call cf_mingw,$1,$2) && \
 	make -j $(njobs) && \
 	make install-strip
@@ -177,7 +177,7 @@ else
 endif
 
 ifeq ($1,x86_64-w64-mingw32)
-.stamp.gcc-$1-$2 : .stamp.mingw-w64-$1-$2
+.stamp.gcc-$1-$2 : .stamp.mingw-w64-crt-$1-$2
 else
 .stamp.gcc-$1-$2 : .stamp.newlib-$1-$2
 endif
