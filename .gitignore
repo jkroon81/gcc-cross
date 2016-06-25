@@ -9,4 +9,4 @@
 /sources/newlib-*
 /sources/mingw-w64-*
 /sysroots
-/*-toolchain.tar.gz
+/*-toolchain-*.tar.gz

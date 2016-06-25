@@ -79,7 +79,7 @@ endef
 
 gcc_unpack_hook := cd gcc-$(gcc_version) && ./contrib/download_prerequisites
 
-all : $(TARGET)-toolchain.tar.gz
+all : $(TARGET)-toolchain-$(HOST).tar.gz
 
 define add_package
 .stamp.$1-unpack : sources/$1-$$($1_version)$$($1_suffix)
@@ -112,8 +112,10 @@ define add_toolchain
 	make install-strip
 	touch $$@
 
+ifneq ($(HOST),$(BUILD))
 ifeq ($2,$(HOST))
 .stamp.binutils-$1-$2 : .stamp.gcc-$(HOST)-$(BUILD)
+endif
 endif
 
 ifeq ($2,$(BUILD))
@@ -179,23 +181,26 @@ endif
 endef
 
 $(foreach h,$(hosts),$(eval $(call add_toolchain,$(TARGET),$h)))
+ifneq ($(HOST),$(BUILD))
 $(eval $(call add_toolchain,$(HOST),$(BUILD)))
+endif
 
-$(TARGET)-toolchain.tar.gz : .stamp.binutils-$(TARGET)-$(HOST) \
-                             .stamp.gcc-$(TARGET)-$(HOST)
+$(TARGET)-toolchain-$(HOST).tar.gz : .stamp.binutils-$(TARGET)-$(HOST) \
+                                     .stamp.gcc-$(TARGET)-$(HOST) \
+                                     .stamp.newlib-$(TARGET)-$(HOST)
 	rm -f $@
-	rm -rf $(TARGET)-toolchain
+	rm -rf $(TARGET)-toolchain-$(HOST)
 	export PATH=$(CURDIR)/sysroots/$(BUILD)/bin:$$PATH && \
 	for pkg in binutils gcc newlib; do \
 		make -C $$pkg-$(TARGET)-$(HOST) install-strip \
-			DESTDIR=$(CURDIR)/$(TARGET)-toolchain; \
+			DESTDIR=$(CURDIR)/$(TARGET)-toolchain-$(HOST); \
 	done
-	cd $(TARGET)-toolchain/$(CURDIR)/sysroots/$(HOST) && \
+	cd $(TARGET)-toolchain-$(HOST)/$(CURDIR)/sysroots/$(HOST) && \
 	tar -czf $(CURDIR)/$@ *
-	rm -rf $(TARGET)-toolchain
+	rm -rf $(TARGET)-toolchain-$(HOST)
 
 clean :
 	rm -f .stamp.*
 	rm -rf binutils-* gcc-* newlib-* mingw-w64-*
 	rm -rf sysroots
-	rm -f *-toolchain.tar.gz
+	rm -f *-toolchain-*.tar.gz
