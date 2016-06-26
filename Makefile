@@ -27,7 +27,7 @@ define cf_binutils
 --build=$(BUILD) \
 --host=$2 \
 --target=$1 \
---prefix=$(CURDIR)/sysroots/$2 \
+--prefix=/ \
 --disable-dependency-tracking \
 --disable-nls \
 $(call cf_binutils_$1,$1,$2)
@@ -37,7 +37,6 @@ define cf_gcc_$(TARGET)
 --enable-languages=c \
 --with-newlib \
 --with-build-sysroot=$(CURDIR)/sysroots/$1 \
---with-sysroot=$(CURDIR)/sysroots/$2/$1 \
 CFLAGS_FOR_TARGET='-Os -fomit-frame-pointer' \
 CXXFLAGS_FOR_TARGET='-Os -fomit-frame-pointer'
 endef
@@ -51,7 +50,7 @@ define cf_gcc
 --build=$(BUILD) \
 --host=$2 \
 --target=$1 \
---prefix=$(CURDIR)/sysroots/$2 \
+--prefix=/ \
 --disable-decimal-float \
 --disable-libquadmath \
 --disable-libssp \
@@ -121,7 +120,9 @@ define add_toolchain
 	( ../binutils-$$(binutils_version)/configure \
 		$$(call cf_binutils,$1,$2) && \
 	make -j $(njobs) && \
-	make install-strip ) &> $(CURDIR)/binutils-$1-$2.log
+	if [ "$2" = "$(BUILD)" ]; then \
+		make install-strip DESTDIR=$(CURDIR)/sysroots/$2; \
+	fi ) &> $(CURDIR)/binutils-$1-$2.log
 	@touch $$@
 
 ifneq ($2-$(BUILD),$(BUILD)-$(BUILD))
@@ -134,7 +135,8 @@ ifeq ($2,$(BUILD))
 	( ../gcc-$$(gcc_version)/configure \
 		$$(call cf_gcc,$1,$2) && \
 	make all-gcc -j $(njobs) && \
-	make install-gcc ) &> $(CURDIR)/gcc-$1-$2.log
+	make install-gcc DESTDIR=$(CURDIR)/sysroots/$2 ) \
+		&> $(CURDIR)/gcc-$1-$2.log
 	@touch $$@
 
 ifeq ($1,x86_64-w64-mingw32)
@@ -163,15 +165,16 @@ ifeq ($2,$(BUILD))
 	@(cd gcc-$1-$2 && \
 	export PATH=$(CURDIR)/sysroots/$(BUILD)/bin:$$$$PATH && \
 	make -j $(njobs) && \
-	make install-strip ) >> gcc-$1-$2.log 2>&1
+	if [ "$1-$2" != "$(TARGET)-$(BUILD)" ]; then \
+		make install-strip DESTDIR=$(CURDIR)/sysroots/$2; \
+	fi ) >> gcc-$1-$2.log 2>&1
 	@touch $$@
 else
 .stamp.gcc-$1-$2 : .stamp.gcc-unpack
 	$$(call prep_build,gcc,$1,$2) && \
 	( ../gcc-$$(gcc_version)/configure \
 		$$(call cf_gcc,$1,$2) && \
-	make -j $(njobs) && \
-	make install-strip ) &> $(CURDIR)/gcc-$1-$2.log
+	make -j $(njobs) ) &> $(CURDIR)/gcc-$1-$2.log
 	@touch $$@
 endif
 
@@ -199,9 +202,9 @@ $(TARGET)-toolchain-$(HOST).tar.gz : .stamp.binutils-$(TARGET)-$(HOST) \
 			&> $$pkg-install-$(TARGET)-$(HOST).log; \
 	done && \
 	make -C newlib-$(TARGET)-all install-strip \
-		DESTDIR=$(CURDIR)/$(TARGET)-toolchain-$(HOST)/$(CURDIR)/sysroots/$(HOST) \
+		DESTDIR=$(CURDIR)/$(TARGET)-toolchain-$(HOST) \
 		>> newlib-install-$(TARGET)-$(HOST).log 2>&1
-	@cd $(TARGET)-toolchain-$(HOST)/$(CURDIR)/sysroots/$(HOST) && \
+	@cd $(TARGET)-toolchain-$(HOST) && \
 	tar -czf $(CURDIR)/$@ *
 	@rm -rf $(TARGET)-toolchain-$(HOST)
 
