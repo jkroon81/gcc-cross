@@ -12,42 +12,41 @@ mingw-w64_version := v4.0.6
 mingw-w64_suffix := .tar.bz2
 mingw-w64_location := http://sourceforge.mirrorservice.org/m/mi/mingw-w64/mingw-w64/mingw-w64-release/
 
-hosts := x86_64-redhat-linux x86_64-w64-mingw32
+build := x86_64-redhat-linux
+mingw := x86_64-w64-mingw32
+
+hosts := $(build) $(mingw)
 njobs := $(shell echo "2 * `cat /proc/cpuinfo | grep processor | wc -l`" | bc)
 
-BUILD ?= x86_64-redhat-linux
-HOST ?= x86_64-w64-mingw32
+HOST ?= $(mingw)
 TARGET ?= h8300-elf
 
-define cf_binutils_x86_64-w64-mingw32
---with-sysroot=$(CURDIR)/sysroots/$2/$1/sys-root
-endef
+crt_$(TARGET) := newlib
+crt_$(mingw)  := mingw-w64-crt
 
 define cf_binutils
---build=$(BUILD) \
+--build=$(build) \
 --host=$2 \
 --target=$1 \
 --prefix=/ \
 --disable-dependency-tracking \
---disable-nls \
-$(call cf_binutils_$1,$1,$2)
+--disable-nls
 endef
 
 define cf_gcc_$(TARGET)
 --enable-languages=c \
 --with-newlib \
---with-build-sysroot=$(CURDIR)/sysroots/$1 \
 CFLAGS_FOR_TARGET='-Os -fomit-frame-pointer' \
 CXXFLAGS_FOR_TARGET='-Os -fomit-frame-pointer'
 endef
 
-define cf_gcc_x86_64-w64-mingw32
+define cf_gcc_$(mingw)
 --enable-languages=c,c++ \
---with-sysroot=$(CURDIR)/sysroots/$2/$1/sys-root
+--with-sysroot=$(CURDIR)/sysroots/$1
 endef
 
 define cf_gcc
---build=$(BUILD) \
+--build=$(build) \
 --host=$2 \
 --target=$1 \
 --prefix=/ \
@@ -55,12 +54,13 @@ define cf_gcc
 --disable-libquadmath \
 --disable-libssp \
 --disable-nls \
+--with-build-sysroot=$(CURDIR)/sysroots/$1 \
 $(call cf_gcc_$1,$1,$2)
 endef
 
 define cf_newlib
---build=$(BUILD) \
---host=$(BUILD) \
+--build=$(build) \
+--host=$(build) \
 --target=$1 \
 --prefix=/ \
 --disable-dependency-tracking \
@@ -71,9 +71,9 @@ CXXFLAGS_FOR_TARGET='-Os -fomit-frame-pointer'
 endef
 
 define cf_mingw
---build=$(BUILD) \
+--build=$(build) \
 --host=$1 \
---prefix=$(CURDIR)/sysroots/$2/$1/sys-root/mingw
+--prefix=/
 endef
 
 gcc_unpack_hook := \
@@ -102,7 +102,7 @@ define prep_build
 rm -rf $1-$2-$3 && \
 mkdir $1-$2-$3 && \
 cd $1-$2-$3 && \
-export PATH=$(CURDIR)/sysroots/$(BUILD)/bin:$$PATH
+export PATH=$(CURDIR)/sysroots/$(build)/bin:$$PATH
 endef
 
 .stamp.newlib-$(TARGET) : .stamp.newlib-unpack .stamp.gcc-bootstrap-$(TARGET)
@@ -114,22 +114,40 @@ endef
 		&> $(CURDIR)/newlib-$(TARGET).log
 	@touch $@
 
+.stamp.mingw-w64-headers : .stamp.mingw-w64-unpack \
+                           .stamp.binutils-$(mingw)-$(build)
+	$(call prep_build,mingw-w64-headers,$(mingw),all) && \
+	( ../mingw-w64-$(mingw-w64_version)/mingw-w64-headers/configure \
+		$(call cf_mingw,$(mingw),all) && \
+	make install DESTDIR=$(CURDIR)/sysroots/$(mingw)/mingw) \
+		&> $(CURDIR)/mingw-w64-headers.log
+	@touch $@
+
+.stamp.mingw-w64-crt-$(mingw) : .stamp.gcc-bootstrap-$(mingw)
+	$(call prep_build,mingw-w64-crt,$(mingw),all) && \
+	( ../mingw-w64-$(mingw-w64_version)/mingw-w64-crt/configure \
+		$(call cf_mingw,$(mingw),all) && \
+	make -j $(njobs) && \
+	make install-strip DESTDIR=$(CURDIR)/sysroots/$(mingw)/mingw) \
+		&> $(CURDIR)/mingw-w64-crt-$(mingw).log
+	@touch $@
+
 define add_toolchain
 .stamp.binutils-$1-$2 : .stamp.binutils-unpack
 	$$(call prep_build,binutils,$1,$2) && \
 	( ../binutils-$$(binutils_version)/configure \
 		$$(call cf_binutils,$1,$2) && \
 	make -j $(njobs) && \
-	if [ "$2" = "$(BUILD)" ]; then \
+	if [ "$2" = "$(build)" ]; then \
 		make install-strip DESTDIR=$(CURDIR)/sysroots/$2; \
 	fi ) &> $(CURDIR)/binutils-$1-$2.log
 	@touch $$@
 
-ifneq ($2-$(BUILD),$(BUILD)-$(BUILD))
-.stamp.binutils-$1-$2 : .stamp.gcc-$2-$(BUILD)
+ifneq ($2-$(build),$(build)-$(build))
+.stamp.binutils-$1-$2 : .stamp.gcc-$2-$(build)
 endif
 
-ifeq ($2,$(BUILD))
+ifeq ($2,$(build))
 .stamp.gcc-bootstrap-$1 : .stamp.gcc-unpack .stamp.binutils-$1-$2
 	$$(call prep_build,gcc,$1,$2) && \
 	( ../gcc-$$(gcc_version)/configure \
@@ -139,33 +157,18 @@ ifeq ($2,$(BUILD))
 		&> $(CURDIR)/gcc-$1-$2.log
 	@touch $$@
 
-ifeq ($1,x86_64-w64-mingw32)
-.stamp.gcc-bootstrap-$1 : .stamp.mingw-w64-headers-$1-$2
+ifeq ($1,$(mingw))
+.stamp.gcc-bootstrap-$1 : .stamp.mingw-w64-headers
 endif
 endif
 
-.stamp.mingw-w64-headers-$1-$2 : .stamp.mingw-w64-unpack .stamp.binutils-$1-$2
-	$$(call prep_build,mingw-w64-headers,$1,$2) && \
-	( ../mingw-w64-$(mingw-w64_version)/mingw-w64-headers/configure \
-		$$(call cf_mingw,$1,$2) && \
-	make install ) &> $(CURDIR)/mingw-w64-headers-$1-$2.log
-	@touch $$@
-
-.stamp.mingw-w64-crt-$1-$2 : .stamp.gcc-bootstrap-$1
-	$$(call prep_build,mingw-w64-crt,$1,$2) && \
-	( ../mingw-w64-$(mingw-w64_version)/mingw-w64-crt/configure \
-		$$(call cf_mingw,$1,$2) && \
-	make -j $(njobs) && \
-	make install-strip ) &> $(CURDIR)/mingw-w64-crt-$1-$2.log
-	@touch $$@
-
-ifeq ($2,$(BUILD))
+ifeq ($2,$(build))
 .stamp.gcc-$1-$2 :
 	@echo "Continuing gcc($1) for $2"
 	@(cd gcc-$1-$2 && \
-	export PATH=$(CURDIR)/sysroots/$(BUILD)/bin:$$$$PATH && \
+	export PATH=$(CURDIR)/sysroots/$(build)/bin:$$$$PATH && \
 	make -j $(njobs) && \
-	if [ "$1-$2" != "$(TARGET)-$(BUILD)" ]; then \
+	if [ "$1-$2" != "$(TARGET)-$(HOST)" ]; then \
 		make install-strip DESTDIR=$(CURDIR)/sysroots/$2; \
 	fi ) >> gcc-$1-$2.log 2>&1
 	@touch $$@
@@ -178,32 +181,30 @@ else
 	@touch $$@
 endif
 
-ifeq ($1,x86_64-w64-mingw32)
-.stamp.gcc-$1-$2 : .stamp.mingw-w64-crt-$1-$2
-else
-.stamp.gcc-$1-$2 : .stamp.newlib-$1
-endif
+.stamp.gcc-$1-$2 : .stamp.$(crt_$1)-$1
 
 endef
 
 $(foreach h,$(hosts),$(eval $(call add_toolchain,$(TARGET),$h)))
-$(eval $(call add_toolchain,$(HOST),$(BUILD)))
+ifneq ($(TARGET),$(HOST))
+$(eval $(call add_toolchain,$(HOST),$(build)))
+endif
 
 $(TARGET)-toolchain-$(HOST).tar.gz : .stamp.binutils-$(TARGET)-$(HOST) \
                                      .stamp.gcc-$(TARGET)-$(HOST) \
-                                     .stamp.newlib-$(TARGET)
+                                     .stamp.$(crt_$(TARGET))-$(TARGET)
 	@echo "Creating $@"
 	@rm -f $@
 	@rm -rf $(TARGET)-toolchain-$(HOST)
-	@export PATH=$(CURDIR)/sysroots/$(BUILD)/bin:$$PATH && \
+	@export PATH=$(CURDIR)/sysroots/$(build)/bin:$$PATH && \
 	for pkg in binutils gcc; do \
 		make -C $$pkg-$(TARGET)-$(HOST) install-strip \
 			DESTDIR=$(CURDIR)/$(TARGET)-toolchain-$(HOST) \
 			&> $$pkg-install-$(TARGET)-$(HOST).log; \
 	done && \
-	make -C newlib-$(TARGET)-all install-strip \
+	make -C $(crt_$(TARGET))-$(TARGET)-all install-strip \
 		DESTDIR=$(CURDIR)/$(TARGET)-toolchain-$(HOST) \
-		>> newlib-install-$(TARGET)-$(HOST).log 2>&1
+		>> $(crt_$(TARGET))-install-$(TARGET)-$(HOST).log 2>&1
 	@cd $(TARGET)-toolchain-$(HOST) && \
 	tar -czf $(CURDIR)/$@ *
 	@rm -rf $(TARGET)-toolchain-$(HOST)
