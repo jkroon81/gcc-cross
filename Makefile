@@ -32,6 +32,7 @@ define cf_binutils
 --host=$2 \
 --target=$1 \
 --prefix=$(prefix) \
+--with-sysroot=$(prefix) \
 --disable-dependency-tracking \
 --disable-nls
 endef
@@ -44,8 +45,7 @@ CXXFLAGS_FOR_TARGET='-Os -fomit-frame-pointer'
 endef
 
 define cf_gcc_$(mingw)
---enable-languages=c,c++ \
---with-build-sysroot=$(destdir)$(prefix)/$1/sys-root
+--enable-languages=c,c++
 endef
 
 define cf_gcc
@@ -53,11 +53,12 @@ define cf_gcc
 --host=$2 \
 --target=$1 \
 --prefix=$(prefix) \
+--with-sysroot=$(prefix) \
+--with-build-sysroot=$(destdir)$(prefix) \
 --disable-decimal-float \
 --disable-libquadmath \
 --disable-libssp \
 --disable-nls \
---with-sysroot=$(prefix)/$1/sys-root \
 $(call cf_gcc_$1,$1,$2)
 endef
 
@@ -76,7 +77,7 @@ endef
 define cf_mingw
 --build=$(build) \
 --host=$1 \
---prefix=/mingw
+--prefix=$(prefix)/$(mingw)
 endef
 
 gcc_unpack_hook := \
@@ -122,7 +123,8 @@ endef
 	$(call prep_build,mingw-w64-headers,$(mingw),all) && \
 	( ../mingw-w64-$(mingw-w64_version)/mingw-w64-headers/configure \
 		$(call cf_mingw,$(mingw),all) && \
-	make install DESTDIR=$(destdir)$(prefix)/$(mingw)/sys-root) \
+	make install DESTDIR=$(destdir) && \
+	ln -s $(mingw) $(destdir)$(prefix)/mingw ) \
 		&> $(CURDIR)/mingw-w64-headers.log
 	@touch $@
 
@@ -131,7 +133,7 @@ endef
 	( ../mingw-w64-$(mingw-w64_version)/mingw-w64-crt/configure \
 		$(call cf_mingw,$(mingw),all) && \
 	make -j $(njobs) && \
-	make install-strip DESTDIR=$(destdir)$(prefix)/$(mingw)/sys-root) \
+	make install-strip DESTDIR=$(destdir) ) \
 		&> $(CURDIR)/mingw-w64-crt-$(mingw).log
 	@touch $@
 
