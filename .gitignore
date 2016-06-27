@@ -8,5 +8,5 @@
 /sources/gcc-*
 /sources/newlib-*
 /sources/mingw-w64-*
-/sysroots
+/sysroot
 /*-toolchain-*.tar.gz
