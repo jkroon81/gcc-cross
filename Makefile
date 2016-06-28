@@ -232,6 +232,7 @@ $(TARGET)-toolchain-$(HOST).tar.gz : .stamp.binutils-$(TARGET)-$(HOST) \
 		DESTDIR=$(CURDIR)/_install-$(TARGET)-$(HOST) \
 		>> $(crt_$(TARGET))-install-$(TARGET)-$(HOST).log 2>&1
 	@cd _install-$(TARGET)-$(HOST)$(prefix) && \
+	find -type d -empty -delete && \
 	tar -czf $(CURDIR)/$@ *
 	@rm -rf _install-$(TARGET)-$(HOST)
 
