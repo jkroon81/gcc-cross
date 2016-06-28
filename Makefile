@@ -1,16 +1,28 @@
-packages := binutils gcc newlib mingw-w64
+packages := binutils gcc gmp isl mingw-w64 mpc mpfr newlib
 binutils_version := 2.26
 binutils_suffix := .tar.bz2
 binutils_location := http://ftp.gnu.org/gnu/binutils/
 gcc_version := 6.1.0
 gcc_suffix := .tar.bz2
 gcc_location := ftp://ftp.fu-berlin.de/unix/languages/gcc/releases/gcc-6.1.0/
-newlib_version := 2.4.0
-newlib_suffix := .tar.gz
-newlib_location := ftp://sourceware.org/pub/newlib/
+gmp_version := 6.1.0
+gmp_suffix := .tar.bz2
+gmp_location := ftp://gcc.gnu.org/pub/gcc/infrastructure/
+isl_version := 0.16.1
+isl_suffix := .tar.bz2
+isl_location := ftp://gcc.gnu.org/pub/gcc/infrastructure/
 mingw-w64_version := v4.0.6
 mingw-w64_suffix := .tar.bz2
 mingw-w64_location := http://sourceforge.mirrorservice.org/m/mi/mingw-w64/mingw-w64/mingw-w64-release/
+mpc_version := 1.0.3
+mpc_suffix := .tar.gz
+mpc_location := ftp://gcc.gnu.org/pub/gcc/infrastructure/
+mpfr_version := 3.1.4
+mpfr_suffix := .tar.bz2
+mpfr_location := ftp://gcc.gnu.org/pub/gcc/infrastructure/
+newlib_version := 2.4.0
+newlib_suffix := .tar.gz
+newlib_location := ftp://sourceware.org/pub/newlib/
 
 build := x86_64-redhat-linux
 mingw := x86_64-w64-mingw32
@@ -80,10 +92,6 @@ define cf_mingw
 --prefix=$(prefix)/$(mingw)
 endef
 
-gcc_unpack_hook := \
-cd gcc-$(gcc_version) && \
-./contrib/download_prerequisites &> /dev/null
-
 all : $(TARGET)-toolchain-$(HOST).tar.gz
 
 define add_package
@@ -91,7 +99,6 @@ define add_package
 	@echo "Unpacking $1"
 	@rm -rf $1-$$($1_version)
 	@tar -xf $$<
-	@$$($1_unpack_hook)
 	@touch $$@
 
 sources/$1-$$($1_version)$$($1_suffix) :
@@ -100,6 +107,18 @@ sources/$1-$$($1_version)$$($1_suffix) :
 endef
 
 $(foreach p,$(packages),$(eval $(call add_package,$p)))
+
+.stamp.gcc-with-libs-unpack : .stamp.gcc-unpack \
+                              .stamp.gmp-unpack \
+                              .stamp.isl-unpack \
+                              .stamp.mpc-unpack \
+                              .stamp.mpfr-unpack
+	@echo "Creating symlinks in gcc"
+	@ln -sf ../gmp-$(gmp_version) gcc-$(gcc_version)/gmp
+	@ln -sf ../isl-$(isl_version) gcc-$(gcc_version)/isl
+	@ln -sf ../mpc-$(mpc_version) gcc-$(gcc_version)/mpc
+	@ln -sf ../mpfr-$(mpfr_version) gcc-$(gcc_version)/mpfr
+	@touch $@
 
 define prep_build
 @echo "Building $1($2) for $3" && \
@@ -153,7 +172,7 @@ ifneq ($2-$(build),$(build)-$(build))
 endif
 
 ifeq ($2,$(build))
-.stamp.gcc-bootstrap-$1 : .stamp.gcc-unpack .stamp.binutils-$1-$2
+.stamp.gcc-bootstrap-$1 : .stamp.gcc-with-libs-unpack .stamp.binutils-$1-$2
 	$$(call prep_build,gcc,$1,$2) && \
 	( ../gcc-$$(gcc_version)/configure \
 		$$(call cf_gcc,$1,$2) && \
@@ -178,7 +197,7 @@ ifeq ($2,$(build))
 	fi ) >> gcc-$1-$2.log 2>&1
 	@touch $$@
 else
-.stamp.gcc-$1-$2 : .stamp.gcc-unpack
+.stamp.gcc-$1-$2 : .stamp.gcc-with-libs-unpack
 	$$(call prep_build,gcc,$1,$2) && \
 	( ../gcc-$$(gcc_version)/configure \
 		$$(call cf_gcc,$1,$2) && \
@@ -202,10 +221,10 @@ $(TARGET)-toolchain-$(HOST).tar.gz : .stamp.binutils-$(TARGET)-$(HOST) \
 	@rm -f $@
 	@rm -rf _install-$(TARGET)-$(HOST)
 	@export PATH=$(destdir)$(prefix)/bin:$$PATH && \
-	for pkg in binutils gcc; do \
-		make -C $$pkg-$(TARGET)-$(HOST) install-strip \
+	for p in binutils gcc; do \
+		make -C $$p-$(TARGET)-$(HOST) install-strip \
 			DESTDIR=$(CURDIR)/_install-$(TARGET)-$(HOST) \
-			&> $$pkg-install-$(TARGET)-$(HOST).log; \
+			&> $$p-install-$(TARGET)-$(HOST).log; \
 	done && \
 	make -C $(crt_$(TARGET))-$(TARGET)-all install-strip \
 		DESTDIR=$(CURDIR)/_install-$(TARGET)-$(HOST) \
@@ -215,7 +234,9 @@ $(TARGET)-toolchain-$(HOST).tar.gz : .stamp.binutils-$(TARGET)-$(HOST) \
 	@rm -rf _install-$(TARGET)-$(HOST)
 
 clean :
+	for p in $(packages); do \
+		rm -rf $$p-*; \
+	done
 	rm -f .stamp.*
-	rm -rf binutils-* gcc-* newlib-* mingw-w64-*
 	rm -rf sysroot
 	rm -f *-toolchain-*.tar.gz
