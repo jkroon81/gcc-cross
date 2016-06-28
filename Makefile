@@ -27,7 +27,6 @@ newlib_location := ftp://sourceware.org/pub/newlib/
 build := x86_64-redhat-linux
 mingw := x86_64-w64-mingw32
 
-hosts := $(build) $(mingw)
 njobs := $(shell expr 2 \* `cat /proc/cpuinfo | grep processor | wc -l`)
 
 HOST ?= $(mingw)
@@ -209,9 +208,16 @@ endif
 
 endef
 
-$(foreach h,$(hosts),$(eval $(call add_toolchain,$(TARGET),$h)))
-ifneq ($(TARGET),$(HOST))
-$(eval $(call add_toolchain,$(HOST),$(build)))
+ifeq ($(build),$(HOST))
+  $(eval $(call add_toolchain,$(TARGET),$(HOST)))
+else
+  $(eval $(call add_toolchain,$(HOST),$(build)))
+  ifneq ($(TARGET),$(build))
+    $(eval $(call add_toolchain,$(TARGET),$(build)))
+  endif
+  ifneq ($(TARGET),$(HOST))
+    $(eval $(call add_toolchain,$(TARGET),$(HOST)))
+  endif
 endif
 
 $(TARGET)-toolchain-$(HOST).tar.gz : .stamp.binutils-$(TARGET)-$(HOST) \
