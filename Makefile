@@ -28,7 +28,7 @@ build := x86_64-redhat-linux
 mingw := x86_64-w64-mingw32
 
 hosts := $(build) $(mingw)
-njobs := $(shell echo "2 * `cat /proc/cpuinfo | grep processor | wc -l`" | bc)
+njobs := $(shell expr 2 \* `cat /proc/cpuinfo | grep processor | wc -l`)
 
 HOST ?= $(mingw)
 TARGET ?= h8300-elf
