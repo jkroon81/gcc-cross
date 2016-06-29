@@ -1,28 +1,22 @@
 packages := binutils gcc gmp isl mingw-w64 mpc mpfr newlib
-binutils_version := 2.26
-binutils_suffix := .tar.bz2
-binutils_location := http://ftp.gnu.org/gnu/binutils/
-gcc_version := 6.1.0
-gcc_suffix := .tar.bz2
-gcc_location := ftp://ftp.fu-berlin.de/unix/languages/gcc/releases/gcc-6.1.0/
-gmp_version := 6.1.0
-gmp_suffix := .tar.bz2
-gmp_location := ftp://gcc.gnu.org/pub/gcc/infrastructure/
-isl_version := 0.16.1
-isl_suffix := .tar.bz2
-isl_location := ftp://gcc.gnu.org/pub/gcc/infrastructure/
-mingw-w64_version := v4.0.6
-mingw-w64_suffix := .tar.bz2
-mingw-w64_location := http://sourceforge.mirrorservice.org/m/mi/mingw-w64/mingw-w64/mingw-w64-release/
-mpc_version := 1.0.3
-mpc_suffix := .tar.gz
-mpc_location := ftp://gcc.gnu.org/pub/gcc/infrastructure/
-mpfr_version := 3.1.4
-mpfr_suffix := .tar.bz2
-mpfr_location := ftp://gcc.gnu.org/pub/gcc/infrastructure/
-newlib_version := 2.4.0
-newlib_suffix := .tar.gz
-newlib_location := ftp://sourceware.org/pub/newlib/
+
+define def_pkg
+$1_version  := $2
+$1_suffix   := $3
+$1_location := $4
+endef
+
+gnu_mirror := http://ftp.gnu.org/gnu
+gcc_mirror := ftp://gcc.gnu.org/pub
+
+$(eval $(call def_pkg,binutils,2.26,.tar.bz2,$(gnu_mirror)/binutils/))
+$(eval $(call def_pkg,gcc,6.1.0,.tar.bz2,$(gnu_mirror)/gcc/gcc-6.1.0/))
+$(eval $(call def_pkg,gmp,6.1.0,.tar.bz2,$(gnu_mirror)/gmp/))
+$(eval $(call def_pkg,isl,0.16.1,.tar.bz2,$(gcc_mirror)/gcc/infrastructure/))
+$(eval $(call def_pkg,mingw-w64,v4.0.6,.tar.bz2,http://sourceforge.mirrorservice.org/m/mi/mingw-w64/mingw-w64/mingw-w64-release/))
+$(eval $(call def_pkg,mpc,1.0.3,.tar.gz,$(gnu_mirror)/mpc/))
+$(eval $(call def_pkg,mpfr,3.1.4,.tar.bz2,$(gnu_mirror)/mpfr/))
+$(eval $(call def_pkg,newlib,2.4.0,.tar.gz,$(gcc_mirror)/newlib/))
 
 build := x86_64-redhat-linux
 mingw := x86_64-w64-mingw32
@@ -101,7 +95,6 @@ all : $(TARGET)-toolchain-$(HOST).tar.gz
 define add_package
 .stamp.$1-unpack : sources/$1-$$($1_version)$$($1_suffix)
 	$$(info Unpacking $1)
-	@rm -rf $1-$$($1_version)
 	@tar -xf $$<
 	@touch $$@
 
@@ -236,6 +229,7 @@ $(TARGET)-toolchain-$(HOST).tar.gz : .stamp.binutils-$(TARGET)-$(HOST) \
 	tar -czf $(CURDIR)/$@ *
 	@rm -rf _install-$(TARGET)-$(HOST)
 
+.PHONY : clean
 clean :
 	for p in $(packages); do \
 		rm -rf $$p-*; \
