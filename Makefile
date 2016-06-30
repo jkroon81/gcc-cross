@@ -198,15 +198,11 @@ endif
 
 endef
 
-ifeq ($(build),$(HOST))
-  $(eval $(call add_toolchain,$(TARGET),$(HOST)))
-else
+$(eval $(call add_toolchain,$(TARGET),$(HOST)))
+ifneq ($(HOST),$(build))
   $(eval $(call add_toolchain,$(HOST),$(build)))
-  ifneq ($(TARGET),$(build))
-    $(eval $(call add_toolchain,$(TARGET),$(build)))
-  endif
   ifneq ($(TARGET),$(HOST))
-    $(eval $(call add_toolchain,$(TARGET),$(HOST)))
+    $(eval $(call add_toolchain,$(TARGET),$(build)))
   endif
 endif
 
