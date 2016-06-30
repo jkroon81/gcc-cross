@@ -26,12 +26,30 @@ njobs := $(shell expr 2 \* `cat /proc/cpuinfo | grep processor | wc -l`)
 HOST ?= $(mingw)
 TARGET ?= h8300-elf
 
-crt_$(TARGET) := newlib
-crt_$(mingw)  := mingw-w64-crt
-
 prefix  := /usr
 destdir := $(CURDIR)/sysroot
 PATH    := $(destdir)$(prefix)/bin:$(PATH)
+
+cf_gcc_$(TARGET)_$(HOST)  := --enable-languages=c
+cf_gcc_$(TARGET)_$(build) := --enable-languages=c
+cf_gcc_$(HOST)_$(build)   := --enable-languages=c,c++
+
+crt_$(mingw)  := mingw-w64-crt
+
+crt_arm-none-eabi := newlib
+cf_binutils_arm-none-eabi_$(HOST) := --disable-werror
+cf_gcc_arm-none-eabi_$(build) += --with-newlib
+cf_gcc_arm-none-eabi_$(HOST)  += --with-newlib
+
+crt_h8300-elf := newlib
+cf_gcc_h8300-elf_$(build) += --with-newlib
+cf_gcc_h8300-elf_$(HOST)  += --with-newlib
+cflags_for_target_h8300-elf   := -Os -fomit-frame-pointer
+cxxflags_for_target_h8300-elf := -Os -fomit-frame-pointer
+
+ifeq ($(crt_$(TARGET)),)
+$(error No CRT defined for target $(TARGET))
+endif
 
 define cf_binutils
 --build=$(build) \
@@ -40,18 +58,8 @@ define cf_binutils
 --prefix=$(prefix) \
 --with-sysroot=$(prefix) \
 --disable-dependency-tracking \
---disable-nls
-endef
-
-define cf_gcc_$(TARGET)
---enable-languages=c \
---with-newlib \
-CFLAGS_FOR_TARGET='-Os -fomit-frame-pointer' \
-CXXFLAGS_FOR_TARGET='-Os -fomit-frame-pointer'
-endef
-
-define cf_gcc_$(mingw)
---enable-languages=c,c++
+--disable-nls \
+$(cf_binutils_$1_$2)
 endef
 
 define cf_gcc
@@ -65,7 +73,9 @@ define cf_gcc
 --disable-libquadmath \
 --disable-libssp \
 --disable-nls \
-$(call cf_gcc_$1,$1,$2)
+$(call cf_gcc_$1_$2,$1,$2) \
+$(if $(cflags_for_target_$1),CFLAGS_FOR_TARGET='$(cflags_for_target_$1)',) \
+$(if $(cxxflags_for_target_$1),CXXFLAGS_FOR_TARGET='$(cxxflags_for_target_$1)',)
 endef
 
 define cf_newlib
@@ -76,8 +86,9 @@ define cf_newlib
 --disable-dependency-tracking \
 --disable-newlib-supplied-syscalls \
 --disable-nls \
-CFLAGS_FOR_TARGET='-Os -fomit-frame-pointer' \
-CXXFLAGS_FOR_TARGET='-Os -fomit-frame-pointer'
+$(cf_newlib_$1) \
+$(if $(cflags_for_target_$1),CFLAGS_FOR_TARGET='$(cflags_for_target_$1)',) \
+$(if $(cxxflags_for_target_$1),CXXFLAGS_FOR_TARGET='$(cxxflags_for_target_$1)',)
 endef
 
 define cf_mingw
@@ -129,7 +140,7 @@ endef
 .stamp.newlib-$(TARGET) : .stamp.newlib-unpack .stamp.gcc-bootstrap-$(TARGET)
 	@($(call prep_build,newlib,$(TARGET),all) && \
 	make -j $(njobs) && \
-	make install-strip DESTDIR=$(destdir) \
+	make install DESTDIR=$(destdir) \
 	) >> $(CURDIR)/newlib-$(TARGET).log 2>&1
 	@touch $@
 
@@ -217,7 +228,7 @@ $(TARGET)-toolchain-$(HOST).tar.gz : .stamp.binutils-$(TARGET)-$(HOST) \
 			DESTDIR=$(CURDIR)/_install-$(TARGET)-$(HOST) \
 			>> $$p-install-$(TARGET)-$(HOST).log 2>&1; \
 	done && \
-	make -C $(crt_$(TARGET))-$(TARGET)-all install-strip \
+	make -C $(crt_$(TARGET))-$(TARGET)-all install \
 		DESTDIR=$(CURDIR)/_install-$(TARGET)-$(HOST) \
 		>> $(crt_$(TARGET))-install-$(TARGET)-$(HOST).log 2>&1
 	@cd _install-$(TARGET)-$(HOST)$(prefix) && \
