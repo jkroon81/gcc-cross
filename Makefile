@@ -37,7 +37,8 @@ cf_gcc_$(HOST)_$(build)   := --enable-languages=c,c++
 crt_$(mingw)  := mingw-w64-crt
 
 crt_arm-none-eabi := newlib
-cf_binutils_arm-none-eabi_$(HOST) := --disable-werror
+cf_binutils_arm-none-eabi_$(build) := --disable-werror
+cf_binutils_arm-none-eabi_$(HOST)  := --disable-werror
 cf_gcc_arm-none-eabi_$(build) += --with-newlib
 cf_gcc_arm-none-eabi_$(HOST)  += --with-newlib
 
