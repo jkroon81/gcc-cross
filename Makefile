@@ -34,7 +34,9 @@ cf_gcc_$(TARGET)_$(HOST)  := --enable-languages=c
 cf_gcc_$(TARGET)_$(build) := --enable-languages=c
 cf_gcc_$(HOST)_$(build)   := --enable-languages=c,c++
 
-crt_$(mingw)  := mingw-w64-crt
+crt_$(mingw) := mingw-w64-crt
+cf_binutils_$(mingw)_$(build) := --disable-multilib
+cf_gcc_$(mingw)_$(build) += --disable-multilib
 
 crt_arm-none-eabi := newlib
 cf_binutils_arm-none-eabi_$(build) := --disable-werror
@@ -71,6 +73,7 @@ define cf_gcc
 --with-sysroot=$(prefix) \
 --with-build-sysroot=$(destdir)$(prefix) \
 --disable-decimal-float \
+--disable-fixed-point \
 --disable-libquadmath \
 --disable-libssp \
 --disable-nls \
@@ -97,6 +100,7 @@ define cf_mingw
 --host=$1 \
 --prefix=$(prefix)/$(mingw)
 endef
+# passing --enable-sdk=no will break the CRT build
 cf_mingw-w64-headers = $(cf_mingw)
 mingw-w64-headers_version := $(mingw-w64_version)
 cf_mingw-w64-crt = $(cf_mingw)
