@@ -76,6 +76,7 @@ define cf_gcc
 --disable-fixed-point \
 --disable-libquadmath \
 --disable-libssp \
+--disable-lto \
 --disable-nls \
 $(call cf_gcc_$1_$2,$1,$2) \
 $(if $(cflags_for_target_$1),CFLAGS_FOR_TARGET='$(cflags_for_target_$1)',) \
