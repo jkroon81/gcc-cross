@@ -9,14 +9,14 @@ endef
 gnu_mirror := http://ftp.gnu.org/gnu
 gcc_mirror := ftp://gcc.gnu.org/pub
 
-$(eval $(call def_pkg,binutils,2.27,.tar.bz2,$(gnu_mirror)/binutils/))
-$(eval $(call def_pkg,gcc,6.2.0,.tar.bz2,$(gnu_mirror)/gcc/gcc-6.2.0/))
-$(eval $(call def_pkg,gmp,6.1.1,.tar.bz2,$(gnu_mirror)/gmp/))
+$(eval $(call def_pkg,binutils,2.28,.tar.bz2,$(gnu_mirror)/binutils/))
+$(eval $(call def_pkg,gcc,7.1.0,.tar.bz2,$(gnu_mirror)/gcc/gcc-7.1.0/))
+$(eval $(call def_pkg,gmp,6.1.2,.tar.bz2,$(gnu_mirror)/gmp/))
 $(eval $(call def_pkg,isl,0.16.1,.tar.bz2,$(gcc_mirror)/gcc/infrastructure/))
-$(eval $(call def_pkg,mingw-w64,v5.0.0,.tar.bz2,http://sourceforge.mirrorservice.org/m/mi/mingw-w64/mingw-w64/mingw-w64-release/))
+$(eval $(call def_pkg,mingw-w64,v5.0.2,.tar.bz2,http://sourceforge.mirrorservice.org/m/mi/mingw-w64/mingw-w64/mingw-w64-release/))
 $(eval $(call def_pkg,mpc,1.0.3,.tar.gz,$(gnu_mirror)/mpc/))
 $(eval $(call def_pkg,mpfr,3.1.5,.tar.bz2,$(gnu_mirror)/mpfr/))
-$(eval $(call def_pkg,newlib,2.4.0,.tar.gz,$(gcc_mirror)/newlib/))
+$(eval $(call def_pkg,newlib,2.5.0,.tar.gz,$(gcc_mirror)/newlib/))
 
 build := x86_64-redhat-linux
 mingw := x86_64-w64-mingw32
